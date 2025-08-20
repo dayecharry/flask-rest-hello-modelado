@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, Owner, Pet, Doctor
+from models import db, Owner, Pet, Doctor, Doctor_pet
 # from models import Person
 
 app = Flask(__name__)
@@ -73,20 +73,21 @@ def create_pet():
     if not (name or weight or race):
         return jsonify({"error": "Campos oblogatorios"}), 400
 
-    #clave = valor--> propiedadBD = VieneFront
-    pet = Pet(name=name, weight=weight,race=race)
+    # clave = valor--> propiedadBD = VieneFront
+    pet = Pet(name=name, weight=weight, race=race)
     db.session.add(pet)
     db.session.commit()
     return jsonify({"message": "Agregado con exito"}), 201
 
+
 @app.route("/pet/<int:pet_id>", methods=["PUT"])
-def modify_pet(pet_id): # pet_id --> se envia en la url
-    pet = Pet.query.get(pet_id) 
+def modify_pet(pet_id):  # pet_id --> se envia en la url
+    pet = Pet.query.get(pet_id)
     if not pet:
         return jsonify({"error": "El id no existe"}), 404
-    data= request.get_json()  # se envia en el body 
+    data = request.get_json()  # se envia en el body
     if "name" in data:
-        pet.name = data["name"] # data.get("name")
+        pet.name = data["name"]  # data.get("name")
     if "weight" in data:
         pet.weight = data["weight"]
     db.session.commit()
@@ -94,12 +95,38 @@ def modify_pet(pet_id): # pet_id --> se envia en la url
 
 
 @app.route("/pet/<int:pet_id>", methods=["DELETE"])
-def delete_pet(pet_id): # pet_id --> se envia en la url
-    pet = Pet.query.get(pet_id) 
+def delete_pet(pet_id):  # pet_id --> se envia en la url
+    pet = Pet.query.get(pet_id)
     if not pet:
         return jsonify({"error": "El id no existe"}), 404
     db.session.delete(pet)
     db.session.commit()
+
+# ------------- DOCTOR_PET --------------
+# fetch("localhost:3000/docPet/1/5")
+
+
+@app.route("/docPet/<int:pet_id>/<int:doc_id>", methods=["POST"])
+def create_docpet(pet_id, doc_id):
+    pet = Pet.query.get(pet_id)
+    doctor = Doctor.query.get(doc_id)
+
+    if not pet:
+        return jsonify({"error": "El id de la mascota no existe"}), 404
+    if not doctor:
+        return jsonify({"error": "El id del doctor no existe"}), 404
+
+    existing_docPet = Doctor_pet.query.filter_by(
+        doctor_id=doctor, pet_id=pet).first()
+
+    if existing_docPet:
+        return jsonify({"error": "Ya existe la relacion"}), 400
+
+    newDocpet = Doctor_pet(doctor_id=doctor, pet_id=pet)
+    db.session.add(newDocpet)
+    db.session.commit()
+    return jsonify({"message": "Creado con exito"}), 201
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
